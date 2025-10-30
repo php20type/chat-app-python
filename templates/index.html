@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Character Chat Prototype</title>
+    <link rel="stylesheet" href="static/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <aside id="sidebar">
+        <h2>Characters</h2>
+        <ul id="characters"></ul>
+        <div id="create-character-form">
+          <h3>Create New Character</h3>
+          <input id="char-name-input" placeholder="Character Name" />
+          <textarea
+            id="char-personality"
+            placeholder="Personality traits..."
+          ></textarea>
+          <textarea
+            id="char-backstory"
+            placeholder="Character backstory..."
+          ></textarea>
+          <textarea
+            id="char-talking-style"
+            placeholder="Talking style..."
+          ></textarea>
+          <button id="create-character">Create Character</button>
+        </div>
+      </aside>
+
+      <main id="main">
+        <div id="profile">
+          <h3 id="char-name">Select a character</h3>
+          <p id="char-info"></p>
+        </div>
+
+        <div id="chat-window"></div>
+
+        <form id="chat-form">
+          <input id="session-id" type="hidden" />
+          <input
+            id="message-input"
+            placeholder="Type your message..."
+            autocomplete="off"
+          />
+          <select id="character-select" style="display: none"></select>
+          <button type="submit">Send</button>
+        </form>
+      </main>
+    </div>
+    <script src="static/app.js"></script>
+  </body>
+</html>
