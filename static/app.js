@@ -27,6 +27,9 @@ async function selectCharacter(character) {
     (character.personality || "") + "\n" + (character.backstory || "");
   // Clear UI
   document.getElementById("chat-window").innerHTML = "";
+  // show delete-character button when a character is selected
+  const delCharBtn = document.getElementById("delete-character");
+  if (delCharBtn) delCharBtn.style.display = "inline-block";
   // Try to load latest session for this character and its messages
   try {
     const r = await fetch(`${API_BASE}/characters/${character.id}/sessions`);
@@ -35,6 +38,11 @@ async function selectCharacter(character) {
       if (sessions.length > 0) {
         // sessions are returned most-recent-first; pick the first
         sessionId = sessions[0].id;
+        // show clear/delete chat buttons when session exists
+        const clearBtn = document.getElementById("clear-chat");
+        if (clearBtn) clearBtn.style.display = "inline-block";
+        const delChatBtn = document.getElementById("delete-chat");
+        if (delChatBtn) delChatBtn.style.display = "inline-block";
         // load messages for the session
         const h = await fetch(
           `${API_BASE}/history?session_id=${encodeURIComponent(sessionId)}`
@@ -53,6 +61,10 @@ async function selectCharacter(character) {
 
   // no existing session — let backend create one on first chat
   sessionId = null;
+  const clearBtn = document.getElementById("clear-chat");
+  if (clearBtn) clearBtn.style.display = "none";
+  const delChatBtn = document.getElementById("delete-chat");
+  if (delChatBtn) delChatBtn.style.display = "none";
 }
 
 async function createCharacter(event) {
@@ -180,6 +192,11 @@ document.getElementById("chat-form").addEventListener("submit", async (e) => {
   if (resp.ok) {
     sessionId = data.session_id;
     addMessageBubble("assistant", data.reply);
+    // show clear/delete chat buttons when a session is active
+    const clearBtn = document.getElementById("clear-chat");
+    if (clearBtn) clearBtn.style.display = "inline-block";
+    const delChatBtn = document.getElementById("delete-chat");
+    if (delChatBtn) delChatBtn.style.display = "inline-block";
 
     // Update memory panel if new facts were extracted
     if (data.extracted_facts && data.extracted_facts.length > 0) {
@@ -204,3 +221,116 @@ document.getElementById("chat-form").addEventListener("submit", async (e) => {
 });
 
 loadCharacters();
+
+// Delete chat (permanently delete session)
+document.getElementById("delete-chat")?.addEventListener("click", async () => {
+  if (!sessionId) {
+    alert("No active conversation to delete.");
+    return;
+  }
+  if (!confirm("Delete this chat and all its messages? This cannot be undone."))
+    return;
+
+  try {
+    const resp = await fetch(
+      `${API_BASE}/sessions/${encodeURIComponent(sessionId)}`,
+      { method: "DELETE" }
+    );
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ detail: "delete failed" }));
+      alert("Delete failed: " + (err.detail || JSON.stringify(err)));
+      return;
+    }
+    // clear UI
+    document.getElementById("chat-window").innerHTML = "";
+    sessionId = null;
+    // clear memory panel if present
+    const mem = document.querySelector("#memory-panel .memories-list");
+    if (mem) mem.innerHTML = "";
+    // hide clear/delete buttons
+    const clearBtn = document.getElementById("clear-chat");
+    if (clearBtn) clearBtn.style.display = "none";
+    const delChatBtn = document.getElementById("delete-chat");
+    if (delChatBtn) delChatBtn.style.display = "none";
+    alert("Chat deleted.");
+  } catch (e) {
+    alert("Delete failed: " + e.message);
+  }
+});
+
+// Clear chat (remove messages and memories, keep session)
+document.getElementById("clear-chat")?.addEventListener("click", async () => {
+  if (!sessionId) {
+    alert("No active conversation to clear.");
+    return;
+  }
+  if (!confirm("Clear this chat (remove messages & memories) ?")) return;
+
+  try {
+    const resp = await fetch(
+      `${API_BASE}/sessions/${encodeURIComponent(sessionId)}/messages`,
+      { method: "DELETE" }
+    );
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ detail: "clear failed" }));
+      alert("Clear failed: " + (err.detail || JSON.stringify(err)));
+      return;
+    }
+    // clear UI but keep sessionId so subsequent messages continue in same session
+    document.getElementById("chat-window").innerHTML = "";
+    const mem = document.querySelector("#memory-panel .memories-list");
+    if (mem) mem.innerHTML = "";
+    alert("Chat cleared.");
+  } catch (e) {
+    alert("Clear failed: " + e.message);
+  }
+});
+
+// Delete character handler
+document
+  .getElementById("delete-character")
+  ?.addEventListener("click", async () => {
+    if (!currentCharacter) {
+      alert("No character selected.");
+      return;
+    }
+    if (
+      !confirm(
+        `Delete character '${currentCharacter.name}' and all its conversations? This cannot be undone.`
+      )
+    )
+      return;
+
+    try {
+      const resp = await fetch(
+        `${API_BASE}/characters/${currentCharacter.id}`,
+        { method: "DELETE" }
+      );
+      if (!resp.ok) {
+        const err = await resp
+          .json()
+          .catch(() => ({ detail: "delete failed" }));
+        alert("Delete failed: " + (err.detail || JSON.stringify(err)));
+        return;
+      }
+      // refresh character list and clear UI
+      await loadCharacters();
+      document.getElementById("chat-window").innerHTML = "";
+      const mem = document.querySelector("#memory-panel .memories-list");
+      if (mem) mem.innerHTML = "";
+      sessionId = null;
+      currentCharacter = null;
+      document.getElementById("char-name").textContent = "Select a character";
+      document.getElementById("char-info").textContent = "";
+      // hide delete buttons
+      const delCharBtn = document.getElementById("delete-character");
+      if (delCharBtn) delCharBtn.style.display = "none";
+      const clearBtn = document.getElementById("clear-chat");
+      if (clearBtn) clearBtn.style.display = "none";
+      const delChatBtn = document.getElementById("delete-chat");
+      if (delChatBtn) delChatBtn.style.display = "none";
+      alert("Character deleted.");
+    } catch (e) {
+      alert("Delete failed: " + e.message);
+    }
+  });

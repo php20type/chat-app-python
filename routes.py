@@ -22,6 +22,33 @@ def list_sessions_for_character(character_id: int, database: Session = Depends(d
     q = database.query(models.Session).filter(models.Session.character_id == character_id).order_by(models.Session.created_at.desc()).limit(20)
     return q.all()
 
+
+@router.delete("/sessions/{session_id}")
+def delete_session(session_id: str, database: Session = Depends(db.get_db)):
+    s = database.query(models.Session).filter(models.Session.id == session_id).first()
+    if not s:
+        raise HTTPException(status_code=404, detail="Session not found")
+    crud.delete_session(database, session_id)
+    return {"detail": "session deleted"}
+
+
+@router.delete("/sessions/{session_id}/messages")
+def clear_session_messages(session_id: str, database: Session = Depends(db.get_db)):
+    s = database.query(models.Session).filter(models.Session.id == session_id).first()
+    if not s:
+        raise HTTPException(status_code=404, detail="Session not found")
+    crud.clear_session(database, session_id)
+    return {"detail": "session cleared"}
+
+
+@router.delete("/characters/{character_id}")
+def delete_character(character_id: int, database: Session = Depends(db.get_db)):
+    c = database.query(models.Character).filter(models.Character.id == character_id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Character not found")
+    crud.delete_character(database, character_id)
+    return {"detail": "character deleted"}
+
 @router.post("/chat", response_model=schemas.ChatResponse)
 def chat(req: schemas.ChatRequest, database: Session = Depends(db.get_db)):
     char = crud.get_character(database, req.character_id)

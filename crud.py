@@ -55,3 +55,42 @@ def add_memory(db: Session, session_id: str, fact: str):
 
 def get_session_memories(db: Session, session_id: str):
     return db.query(models.Memory).filter(models.Memory.session_id == session_id).order_by(models.Memory.created_at).all()
+
+def delete_session(db: Session, session_id: str):
+    """Delete a session and its related messages and memories."""
+    # delete messages
+    db.query(models.Message).filter(models.Message.session_id == session_id).delete(synchronize_session=False)
+    # delete memories
+    db.query(models.Memory).filter(models.Memory.session_id == session_id).delete(synchronize_session=False)
+    # delete session record
+    db.query(models.Session).filter(models.Session.id == session_id).delete(synchronize_session=False)
+    db.commit()
+    return True
+
+
+def delete_character(db: Session, character_id: int):
+    """Delete a character and all related sessions, messages, and memories."""
+    # find session ids for this character
+    sessions = db.query(models.Session.id).filter(models.Session.character_id == character_id).all()
+    session_ids = [s.id for s in sessions]
+
+    if session_ids:
+        # delete messages for those sessions
+        db.query(models.Message).filter(models.Message.session_id.in_(session_ids)).delete(synchronize_session=False)
+        # delete memories for those sessions
+        db.query(models.Memory).filter(models.Memory.session_id.in_(session_ids)).delete(synchronize_session=False)
+        # delete the sessions
+        db.query(models.Session).filter(models.Session.id.in_(session_ids)).delete(synchronize_session=False)
+
+    # finally delete the character
+    db.query(models.Character).filter(models.Character.id == character_id).delete(synchronize_session=False)
+    db.commit()
+    return True
+
+
+def clear_session(db: Session, session_id: str):
+    """Clear messages and memories for a session but keep the session record."""
+    db.query(models.Message).filter(models.Message.session_id == session_id).delete(synchronize_session=False)
+    db.query(models.Memory).filter(models.Memory.session_id == session_id).delete(synchronize_session=False)
+    db.commit()
+    return True

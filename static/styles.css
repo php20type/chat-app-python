@@ -28,6 +28,36 @@ main#main { flex:1; display:flex; flex-direction:column; padding:1rem; }
 #create-character-form button:hover {
     background: #0056b3;
 }
+
+#clear-chat {
+    background: #ffc107;
+    color: #000;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#delete-chat {
+    background: #dc3545;
+    color: #fff;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#delete-character {
+    background: #6c757d;
+    color: #fff;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+@media (max-width: 800px) {
+    aside#sidebar { width: 220px; }
+}
 #profile { border-bottom:1px solid #eee; padding-bottom:0.5rem; margin-bottom:0.5rem; }
 #chat-window { flex:1; overflow:auto; padding:0.5rem; display:flex; flex-direction:column; gap:8px; }
 .bubble { 
