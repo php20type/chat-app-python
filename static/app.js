@@ -123,7 +123,27 @@ function addMessageBubble(role, text, sentiment = null) {
   const container = document.getElementById("chat-window");
   const div = document.createElement("div");
   div.className = `bubble ${role}`;
-  div.textContent = text;
+  // if text looks like an image url, render an <img>
+  const isImage = (s) => {
+    if (!s) return false;
+    try {
+      s = s.toString();
+    } catch (e) {
+      return false;
+    }
+    if (s.startsWith("/static/uploads/")) return true;
+    return /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(s);
+  };
+
+  if (isImage(text)) {
+    const img = document.createElement("img");
+    img.src = text;
+    img.style.maxWidth = "320px";
+    img.style.borderRadius = "8px";
+    div.appendChild(img);
+  } else {
+    div.textContent = text;
+  }
 
   if (sentiment) {
     const sentimentDiv = document.createElement("div");
@@ -183,6 +203,9 @@ document.getElementById("chat-form").addEventListener("submit", async (e) => {
     max_context_messages: 12,
   };
   input.value = "";
+  // reset file input after sending
+  const fileInput = document.getElementById("file-input");
+  if (fileInput) fileInput.value = "";
   const resp = await fetch(`${API_BASE}/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -221,6 +244,60 @@ document.getElementById("chat-form").addEventListener("submit", async (e) => {
 });
 
 loadCharacters();
+
+// Handle image uploads from file input
+document.getElementById("file-input")?.addEventListener("change", async (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  if (!currentCharacter) {
+    alert("Select or create a character first.");
+    e.target.value = "";
+    return;
+  }
+
+  const form = new FormData();
+  form.append("file", file);
+  try {
+    const up = await fetch(`${API_BASE}/upload`, {
+      method: "POST",
+      body: form,
+    });
+    const result = await up.json();
+    if (!up.ok) {
+      alert("Upload failed: " + (result.detail || JSON.stringify(result)));
+      e.target.value = "";
+      return;
+    }
+    // send chat message containing the image url
+    const imageUrl = result.url;
+    addMessageBubble("user", imageUrl);
+    const payload = {
+      session_id: sessionId || null,
+      character_id: currentCharacter.id,
+      message: imageUrl,
+      max_context_messages: 12,
+    };
+    const resp = await fetch(`${API_BASE}/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (resp.ok) {
+      sessionId = data.session_id;
+      addMessageBubble("assistant", data.reply);
+    } else {
+      addMessageBubble(
+        "assistant",
+        `Error: ${data.detail || JSON.stringify(data)}`
+      );
+    }
+  } catch (err) {
+    alert("Upload failed: " + err.message);
+  } finally {
+    e.target.value = "";
+  }
+});
 
 // Delete chat (permanently delete session)
 document.getElementById("delete-chat")?.addEventListener("click", async () => {

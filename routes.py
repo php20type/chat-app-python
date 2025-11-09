@@ -1,5 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
+import os
+import uuid
 import db, crud, schemas, openai_client, utils, models
 
 router = APIRouter()
@@ -48,6 +50,33 @@ def delete_character(character_id: int, database: Session = Depends(db.get_db)):
         raise HTTPException(status_code=404, detail="Character not found")
     crud.delete_character(database, character_id)
     return {"detail": "character deleted"}
+
+
+@router.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    """Accept an uploaded image and save it under static/uploads, returns public URL."""
+    # basic validation: ensure it's an image
+    filename = file.filename or "upload"
+    lower = filename.lower()
+    if not any(lower.endswith(ext) for ext in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg")):
+        raise HTTPException(status_code=400, detail="Only image uploads are allowed")
+
+    uploads_dir = os.path.join(os.path.dirname(__file__), "static", "uploads")
+    os.makedirs(uploads_dir, exist_ok=True)
+    ext = os.path.splitext(filename)[1]
+    unique = f"{uuid.uuid4().hex}{ext}"
+    path = os.path.join(uploads_dir, unique)
+
+    contents = await file.read()
+    # optional: limit size (e.g., 10MB)
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large (max 10MB)")
+
+    with open(path, "wb") as f:
+        f.write(contents)
+
+    url = f"/static/uploads/{unique}"
+    return {"url": url}
 
 @router.post("/chat", response_model=schemas.ChatResponse)
 def chat(req: schemas.ChatRequest, database: Session = Depends(db.get_db)):
